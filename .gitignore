@@ -1,0 +1,55 @@
+# Maven
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+mvnw
+mvnw.cmd
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Archivos temporales
+*.class
+*.jar
+*.war
+*.ear
+*.swp
+*.tmp
+
+# H2 database
+*.mv.db
+*.h2.db
+
+*.env
+.env*
+
+# Código autogenerado por OpenAPI Generator
+/src/generated/
+
+# Seguridad
+secret.*
+*.key
+*.pem
+*.crt
+
+# Spring Boot devtools
+.spring-boot-devtools.properties
+
+# Test coverage
+jacoco.exec
+/coverage/
+
+# Build tools
+.build/
+.gradle/
