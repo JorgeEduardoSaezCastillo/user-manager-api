@@ -1,4 +1,4 @@
-package evaluacion.repository;
+package com.evaluacion.repository;
 
 import com.evaluacion.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;

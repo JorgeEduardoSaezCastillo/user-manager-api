@@ -1,4 +1,4 @@
-package evaluacion.entity;
+package com.evaluacion.entity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

@@ -1,4 +1,4 @@
-package evaluacion.validation;
+package com.evaluacion.validation;
 
 import com.evaluacion.dto.UserRequestDTO;
 import com.evaluacion.exception.ValidationException;

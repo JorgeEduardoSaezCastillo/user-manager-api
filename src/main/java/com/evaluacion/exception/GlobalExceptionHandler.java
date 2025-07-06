@@ -1,4 +1,4 @@
-package evaluacion.exception;
+package com.evaluacion.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

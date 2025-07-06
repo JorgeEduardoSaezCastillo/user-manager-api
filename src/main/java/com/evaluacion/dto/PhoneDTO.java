@@ -1,4 +1,4 @@
-package evaluacion.dto;
+package com.evaluacion.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
