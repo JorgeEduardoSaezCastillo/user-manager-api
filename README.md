@@ -31,11 +31,29 @@ Este archivo contiene el esquema completo de la base de datos, incluyendo las ta
 ### Prerrequisitos
 
 - Tener instalado **Java 17**.
-- Tener instalado **Maven**.
+- Tener acceso a la terminal (no es necesario tener Maven instalado globalmente si se usa el Maven Wrapper incluido).
 
-### Ejecutar la Aplicación
+### Usar Maven Wrapper (recomendado)
 
-Desde la raíz del proyecto, ejecuta el siguiente comando:
+Este proyecto incluye el **Maven Wrapper**, el cual asegura que se utilice la versión correcta de Maven (3.9.10) sin requerir instalación global.
+
+Desde la raíz del proyecto, ejecuta:
+
+**En Mac/Linux:**
+```
+./mvnw spring-boot:run
+```
+
+**En Windows:**
+```
+mvnw.cmd spring-boot:run
+```
+
+Esto descargará y usará automáticamente Maven 3.9.10.
+
+### Ejecutar la Aplicación (opcional si tienes Maven global instalado)
+
+Si prefieres usar tu instalación global de Maven (versión 3.9.10 o superior), puedes ejecutar:
 
 ```
 mvn spring-boot:run
