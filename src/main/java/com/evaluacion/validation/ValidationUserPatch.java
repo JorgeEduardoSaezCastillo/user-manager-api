@@ -10,10 +10,10 @@ import java.util.regex.Pattern;
 @Component
 public class ValidationUserPatch {
 
-    @Value("${validacion.regex.email}")
+    @Value("${validacion.regex.correo}")
     private String regexCorreo;
 
-    @Value("${validacion.regex.password}")
+    @Value("${validacion.regex.contrasena}")
     private String regexContrasena;
 
     public void validate(UserRequestDTO dto){
