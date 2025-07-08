@@ -7,6 +7,7 @@ import com.evaluacion.entity.User;
 import com.evaluacion.exception.ValidationException;
 import com.evaluacion.repository.UserRepository;
 import com.evaluacion.util.testdata.TestDataFactory;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ class UserServiceImplTest {
 
     @InjectMocks
     private UserServiceImpl usuarioService;
+
+    @Mock
+    private Validator validator;
 
     private UUID userId;
 
@@ -95,7 +99,7 @@ class UserServiceImplTest {
         ValidationException exception = assertThrows(ValidationException.class, () -> {
             usuarioService.createUser(dto);
         });
-        assertEquals("El correo ya esta registrado", exception.getMessage());
+        assertEquals("El correo ya se encuentra registrado", exception.getMessage());
     }
 
     @Test

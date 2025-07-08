@@ -1,4 +1,3 @@
-// UserControllerTest.java
 package com.evaluacion.controller;
 
 import com.evaluacion.dto.UserRequestDTO;
@@ -6,10 +5,6 @@ import com.evaluacion.entity.User;
 import com.evaluacion.exception.GlobalExceptionHandler;
 import com.evaluacion.service.UserService;
 import com.evaluacion.util.testdata.TestDataFactory;
-import com.evaluacion.validation.ValidationGetUser;
-import com.evaluacion.validation.ValidationUser;
-import com.evaluacion.validation.ValidationUserDelete;
-import com.evaluacion.validation.ValidationUserPatch;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,15 +16,16 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Collections;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 
 @ExtendWith(MockitoExtension.class)
 public class UserControllerTest {
@@ -40,18 +36,6 @@ public class UserControllerTest {
     @Mock
     private UserService userService;
 
-    @Mock
-    private ValidationUser validationUser;
-
-    @Mock
-    private ValidationUserPatch validationUserPatch;
-
-    @Mock
-    private ValidationUserDelete validationUserDelete;
-
-    @Mock
-    private ValidationGetUser validationGetUser;
-
     @InjectMocks
     private UserController userController;
 
@@ -59,6 +43,7 @@ public class UserControllerTest {
 
     @BeforeEach
     void setUp() {
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         userId = UUID.randomUUID();
 
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
@@ -83,6 +68,8 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.name").value(usuario.getName()))
                 .andExpect(jsonPath("$.email").value(usuario.getEmail()))
                 .andExpect(jsonPath("$.token").value(usuario.getToken()));
+
+        verify(userService).createUser(any(UserRequestDTO.class));
     }
 
     @Test
@@ -97,6 +84,8 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.name").value(usuario.getName()))
                 .andExpect(jsonPath("$.email").value(usuario.getEmail()));
+
+        verify(userService).getUser(eq(userId));
     }
 
     @Test
@@ -117,15 +106,15 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.name").value("Jorge Jorgesaez Updated"))
                 .andExpect(jsonPath("$.email").value("jorge.updated@saez.org"));
+
+        verify(userService).updateUser(eq(userId), any(UserRequestDTO.class));
     }
 
     @Test
     public void testActualizarParcialmenteUsuario_Success() throws Exception {
-
-        UserRequestDTO requestDTO = new UserRequestDTO();
+        // Genera un DTO completo válido y sólo cambia el nombre
+        UserRequestDTO requestDTO = TestDataFactory.defaultUserRequest();
         requestDTO.setName("Jorge Jorgesaez Partial");
-        requestDTO.setPhones(Collections.emptyList());
-
         String requestJson = objectMapper.writeValueAsString(requestDTO);
 
         User usuario = TestDataFactory.defaultUser(userId);
@@ -139,6 +128,8 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.name").value("Jorge Jorgesaez Partial"));
+
+        verify(userService).partiallyUpdateUser(eq(userId), any(UserRequestDTO.class));
     }
 
     @Test
@@ -146,5 +137,7 @@ public class UserControllerTest {
         mockMvc.perform(delete("/user/" + userId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
+
+        verify(userService).deleteUser(eq(userId));
     }
 }

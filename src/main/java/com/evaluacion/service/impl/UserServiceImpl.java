@@ -1,7 +1,6 @@
 package com.evaluacion.service.impl;
 
 import com.evaluacion.dto.UserRequestDTO;
-import com.evaluacion.entity.Phone;
 import com.evaluacion.entity.User;
 import com.evaluacion.exception.ValidationException;
 import com.evaluacion.mapper.PhoneMapper;
@@ -10,32 +9,43 @@ import com.evaluacion.repository.UserRepository;
 import com.evaluacion.config.JwtUtil;
 import com.evaluacion.service.UserService;
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+
+import static com.evaluacion.mapper.UserMapper.setDatesMofifiedAndLogin;
 
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final Validator validator;
 
     @Autowired
-    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, Validator validator) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.validator = validator;
     }
 
     @Override
     @Transactional
     public User createUser(UserRequestDTO dto) {
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new ValidationException("El correo ya esta registrado");
+        // 1) Validación de anotaciones JSR-380 en UserRequestDTO
+        Set<ConstraintViolation<UserRequestDTO>> violations = validator.validate(dto);
+        if (!violations.isEmpty()) {
+            String mensaje = violations.iterator().next().getMessage();
+            throw new ValidationException(mensaje);
         }
+
+        validateEmailNotRegistered(dto.getEmail());
 
         User user = UserMapper.toEntity(dto);
         // persistir
@@ -43,7 +53,6 @@ public class UserServiceImpl implements UserService {
 
         String token = jwtUtil.generarToken(created.getId());
         LocalDateTime now = LocalDateTime.now();
-
         created.setToken(token);
         created.setCreated(now);
         created.setLastLogin(now);
@@ -56,8 +65,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User getUser(UUID id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ValidationException("Usuario no encontrado"));
+        User user = findUserById(id);
 
         UUID idAutenticado = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
         updateLastLogin(idAutenticado);
@@ -67,31 +75,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User updateUser(UUID id, UserRequestDTO dto) {
-        validatePropietario(id);
+        validateOwnership(id);
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ValidationException("Usuario no encontrado"));
+        User user = findUserById(id);
 
-        if (!user.getEmail().equals(dto.getEmail()) && userRepository.existsByEmail(dto.getEmail())) {
-            throw new ValidationException("El correo ya esta registrado");
-        }
+        validateEmailNotUsedByAnotherUser(dto.getEmail(), user.getEmail());
 
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
+        UserMapper.updateDtoToEntity(dto, user);
 
-        if (dto.getPhones() != null) {
-            List<Phone> updatedPhones = PhoneMapper.mapearDesdeDTOs(dto.getPhones(), user);
-            user.getPhones().clear();
-            updatedPhones.forEach(phone -> {
-                phone.setUser(user);
-                user.getPhones().add(phone);
-            });
-        }
-
-        LocalDateTime time = LocalDateTime.now();
-        user.setModified(time);
-        user.setLastLogin(time);
+        setDatesMofifiedAndLogin(user);
 
         return userRepository.save(user);
     }
@@ -99,38 +91,25 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User partiallyUpdateUser(UUID id, UserRequestDTO dto) {
-        validatePropietario(id);
+        validateOwnership(id);
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ValidationException("Usuario no encontrado"));
+        User user = findUserById(id);
 
-        if (dto.getName() != null) {
-            user.setName(dto.getName());
-        }
+        if (dto.getName() != null) user.setName(dto.getName());
+
 
         if (dto.getEmail() != null) {
-            if (userRepository.existsByEmail(dto.getEmail()) && !user.getEmail().equals(dto.getEmail())) {
-                throw new ValidationException("El correo ya está registrado por otro usuario");
-            }
+            validateEmailNotUsedByAnotherUser(dto.getEmail(), user.getEmail());
             user.setEmail(dto.getEmail());
         }
 
-        if (dto.getPassword() != null) {
-            user.setPassword(dto.getPassword());
-        }
+        if (dto.getPassword() != null) user.setPassword(dto.getPassword());
 
-        if (dto.getPhones() != null) {
-            List<Phone> updatedPhones = PhoneMapper.mapearDesdeDTOs(dto.getPhones(), user);
-            user.getPhones().clear();
-            updatedPhones.forEach(phone -> {
-                phone.setUser(user);
-                user.getPhones().add(phone);
-            });
-        }
 
-        LocalDateTime time = LocalDateTime.now();
-        user.setModified(time);
-        user.setLastLogin(time);
+        if (dto.getPhones() != null) PhoneMapper.actualizarTelefonosDesdeDTOs(dto.getPhones(), user);
+
+
+        setDatesMofifiedAndLogin(user);
 
         return userRepository.save(user);
     }
@@ -138,11 +117,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(UUID id) {
-        validatePropietario(id);
-        User existente = userRepository.findById(id)
-                .orElseThrow(() -> new ValidationException("Usuario no encontrado"));
+        validateOwnership(id);
+        User user = findUserById(id);
 
-        userRepository.delete(existente);
+        userRepository.delete(user);
     }
 
     @Override
@@ -153,10 +131,27 @@ public class UserServiceImpl implements UserService {
         });
     }
 
-    private void validatePropietario(UUID idUserSolicitado) {
+    private void validateOwnership(UUID idUserSolicitado) {
         UUID idAutenticado = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
         if (!idAutenticado.equals(idUserSolicitado)) {
             throw new ValidationException("No tiene permisos para modificar este recurso");
         }
+    }
+
+    private void validateEmailNotRegistered(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ValidationException("El correo ya se encuentra registrado");
+        }
+    }
+
+    private void validateEmailNotUsedByAnotherUser(String nuevoEmail, String emailActual) {
+        if (userRepository.existsByEmail(nuevoEmail) && !nuevoEmail.equals(emailActual)) {
+            throw new ValidationException("El correo ya está registrado por otro usuario");
+        }
+    }
+
+    private User findUserById(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ValidationException("Usuario no encontrado"));
     }
 }

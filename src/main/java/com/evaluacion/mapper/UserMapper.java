@@ -9,6 +9,7 @@ import com.evaluacion.usuariosapi.dto.UserRequest;
 import com.evaluacion.usuariosapi.dto.UserResponse;
 import com.evaluacion.util.DateUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -85,5 +86,26 @@ public class UserMapper {
                         }).collect(Collectors.toList())
         );
         return response;
+    }
+
+    public static void updateDtoToEntity(UserRequestDTO dto, User user) {
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
+
+        if (dto.getPhones() != null) {
+            List<Phone> updatedPhones = PhoneMapper.mapearDesdeDTOs(dto.getPhones(), user);
+            user.getPhones().clear();
+            updatedPhones.forEach(phone -> {
+                phone.setUser(user);
+                user.getPhones().add(phone);
+            });
+        }
+    }
+
+    public static void setDatesMofifiedAndLogin(User user) {
+        LocalDateTime now = LocalDateTime.now();
+        user.setModified(now);
+        user.setLastLogin(now);
     }
 }

@@ -19,4 +19,13 @@ public class PhoneMapper {
             return phone;
         }).collect(Collectors.toList());
     }
+
+    public static void actualizarTelefonosDesdeDTOs(List<PhoneDTO> phoneDTOs, User user) {
+        List<Phone> updatedPhones = mapearDesdeDTOs(phoneDTOs, user);
+        user.getPhones().clear();
+        updatedPhones.forEach(phone -> {
+            phone.setUser(user);
+            user.getPhones().add(phone);
+        });
+    }
 }
